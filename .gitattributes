@@ -1,0 +1,12 @@
+# Keep LF in the repo and in the working tree. The bot runs on Windows and is
+# edited on Windows, and letting git flip line endings makes every update look
+# like a whole-file rewrite in the diff.
+* text=auto eol=lf
+
+# Batch files must keep CRLF or cmd.exe mis-parses them.
+*.bat text eol=crlf
+
+# Never touch binaries.
+*.png binary
+*.jpg binary
+*.zip binary
