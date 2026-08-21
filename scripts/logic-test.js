@@ -9,6 +9,8 @@
 process.env.DISCORD_TOKEN ||= 'logictest';
 process.env.CLIENT_ID ||= '000000000000000000';
 process.env.GUILD_ID ||= '000000000000000000';
+// Never let the tests touch the live store — the bot may be running.
+process.env.GATEWOOD_DB ||= require('path').join(require('os').tmpdir(), 'gatewood-logic-test-db.json');
 
 const assert = require('assert');
 const path = require('path');
@@ -18,6 +20,8 @@ const root = path.join(__dirname, '..');
 const load = (m) => require(path.join(root, m));
 
 const pass = (msg) => console.log(`  ✓ ${msg}`);
+// Checks that need await are queued here and drained at the end.
+const asyncChecks = [];
 console.log('\n  Gatewood bot — logic tests\n  ─────────────────────────────────────────');
 
 // ── Permission overwrite merging ─────────────────────────────────────────────
@@ -214,6 +218,72 @@ const fivem = load('src/fivem');
   pass('every function the routers call is exported');
 }
 
+// ── Ticket close ─────────────────────────────────────────────────────────────
+// Both call sites hand close() an `interaction.user`, which is a User, not a
+// GuildMember. Reading `.user.tag` off it threw partway through, leaving the
+// ticket filed but never deleted. Drive the real function with real shapes.
+{
+  const { Collection } = require('@discordjs/collection');
+  const db = load('src/database');
+  const ticketService = load('src/services/ticketService');
+
+  const makeChannel = (sent, dms) => {
+    const messages = new Collection();
+    messages.set('1', {
+      id: '1', createdTimestamp: Date.now(), author: { tag: 'member#0001' },
+      content: 'my game crashed', attachments: new Collection(), embeds: [],
+    });
+    return {
+      id: 'chan-1',
+      name: 'support-0001',
+      topic: 'General Support',
+      isTextBased: () => true,
+      send: async (payload) => { sent.push(payload); return { id: 'm1' }; },
+      delete: async () => {},
+      messages: { fetch: async ({ before }) => (before ? new Collection() : messages) },
+      guild: {
+        id: 'guild-1',
+        channels: { cache: new Collection(), fetch: async () => null },
+        members: {
+          fetch: async () => ({
+            id: 'owner-1',
+            send: async (payload) => { dms.push(payload); return { id: 'dm1' }; },
+          }),
+        },
+      },
+    };
+  };
+
+  const runClose = async (closer, label) => {
+    const sent = [];
+    const dms = [];
+    const channel = makeChannel(sent, dms);
+    db.setTicket(channel.id, { id: 7, ownerId: 'owner-1', type: 'support', claimedBy: null, createdAt: Date.now() });
+
+    const count = await ticketService.close(channel, closer, 'resolved');
+
+    assert.strictEqual(count, 1, `${label}: transcript captured the message`);
+    assert.ok(sent.length >= 1, `${label}: posted the closing notice`);
+    assert.strictEqual(db.getTicket(channel.id), undefined, `${label}: ticket record was deleted`);
+
+    // The DM is where the User/GuildMember mixup blew up. close() catches its
+    // own errors now, so asserting the ticket closed is not enough — the DM has
+    // to have actually gone out, carrying the closer's tag.
+    assert.strictEqual(dms.length, 1, `${label}: the owner was DM'd the transcript`);
+    const body = dms[0].embeds[0].toJSON().description;
+    assert.ok(body.includes('staff#0001'), `${label}: DM names the closer, got "${body}"`);
+    assert.ok(dms[0].files?.length === 1, `${label}: DM carries the transcript file`);
+  };
+
+  asyncChecks.push(async () => {
+    // A plain User, exactly what interaction.user gives you.
+    await runClose({ id: 'staff-1', tag: 'staff#0001' }, 'closing as a User');
+    // A GuildMember, in case a future call site passes one.
+    await runClose({ id: 'staff-1', user: { tag: 'staff#0001' } }, 'closing as a GuildMember');
+    pass('ticket close works with both a User and a GuildMember');
+  });
+}
+
 // ── Transcript ───────────────────────────────────────────────────────────────
 {
   const transcript = load('src/transcript');
@@ -222,5 +292,17 @@ const fivem = load('src/fivem');
   pass('transcript exports build/collect');
 }
 
-console.log('  ─────────────────────────────────────────');
-console.log('\n  ✅ All logic tests passed.\n');
+// Drain the queued async checks. Nothing may report success before these run —
+// a queued-but-never-awaited check would pass silently, which is worse than no
+// test at all.
+(async () => {
+  const queued = asyncChecks.length;
+  for (const check of asyncChecks) await check();
+  if (queued === 0) throw new Error('async checks were registered but none ran');
+
+  console.log('  ─────────────────────────────────────────');
+  console.log('\n  ✅ All logic tests passed.\n');
+})().catch((err) => {
+  console.error(`\n  ❌ ${err.message}\n`);
+  process.exit(1);
+});

@@ -7,7 +7,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const FILE = path.join(__dirname, '..', 'data', 'db.json');
+// GATEWOOD_DB lets the test suite point at a scratch file instead of the live
+// store. Leave it unset in normal operation.
+const FILE = process.env.GATEWOOD_DB || path.join(__dirname, '..', 'data', 'db.json');
 
 const DEFAULTS = {
   // Registry of everything /setup built, so features can find things later.

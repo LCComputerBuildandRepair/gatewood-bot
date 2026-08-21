@@ -125,9 +125,12 @@ async function claim(channel, member) {
   if (!rec) return { ok: false, reason: 'This channel is not a ticket.' };
   if (rec.claimedBy) return { ok: false, reason: `Already claimed by <@${rec.claimedBy}>.` };
 
+  // Same normalisation as close(): accept a User or a GuildMember.
+  const claimer = member.user ?? member;
+
   db.setTicket(channel.id, { ...rec, claimedBy: member.id });
   await channel.send({ embeds: [E.success('Ticket claimed', `<@${member.id}> is handling this one.`)] });
-  await channel.setTopic(`${channel.topic || ''} • claimed by ${member.user.tag}`).catch(() => {});
+  await channel.setTopic(`${channel.topic || ''} • claimed by ${claimer.tag}`).catch(() => {});
   return { ok: true };
 }
 
@@ -138,6 +141,10 @@ async function claim(channel, member) {
 async function close(channel, closer, reason = 'No reason given') {
   const rec = db.getTicket(channel.id);
   const type = rec ? byKey(rec.type) : null;
+
+  // `closer` may be a User (interaction.user) or a GuildMember. Both expose
+  // `.id`, but only a member has `.user`, so normalise before reading the tag.
+  const closerUser = closer.user ?? closer;
 
   await channel.send({
     embeds: [E.warn('Closing ticket', `Closed by <@${closer.id}>.\n**Reason:** ${clamp(reason, 500)}\n\nA transcript is on its way — this channel deletes in 10 seconds.`)],
@@ -163,13 +170,19 @@ async function close(channel, closer, reason = 'No reason given') {
   await logTo(channel.guild, 'ticket_logs', summary, { files: [file] });
 
   if (rec) {
-    const owner = await channel.guild.members.fetch(rec.ownerId).catch(() => null);
-    if (owner) {
-      const { file: dmCopy } = await transcript.build(channel, 'Your ticket transcript');
-      await owner.send({
-        embeds: [E.info('Your ticket was closed', `**${type?.label || 'Ticket'}** — closed by ${closer.user.tag}.\n**Reason:** ${clamp(reason, 500)}\n\nYour transcript is attached.`)],
-        files: [dmCopy],
-      }).catch(() => { /* DMs closed */ });
+    // Best-effort courtesy copy. Wrapped whole: a failure here must never
+    // strand the ticket with its record deleted but its channel still standing.
+    try {
+      const owner = await channel.guild.members.fetch(rec.ownerId).catch(() => null);
+      if (owner) {
+        const { file: dmCopy } = await transcript.build(channel, 'Your ticket transcript');
+        await owner.send({
+          embeds: [E.info('Your ticket was closed', `**${type?.label || 'Ticket'}** — closed by ${closerUser.tag}.\n**Reason:** ${clamp(reason, 500)}\n\nYour transcript is attached.`)],
+          files: [dmCopy],
+        }).catch(() => { /* DMs closed */ });
+      }
+    } catch (err) {
+      console.error('[ticket] could not DM the transcript:', err.message);
     }
     db.deleteTicket(channel.id);
   }
