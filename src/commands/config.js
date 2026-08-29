@@ -49,6 +49,7 @@ module.exports = {
         { name: 'automod', value: 'automod' },
         { name: 'leveling / XP', value: 'levelingEnabled' },
         { name: 'welcome messages', value: 'welcomeEnabled' },
+        { name: 'auto-grant Citizen + Whitelisted on join (skips verify)', value: 'autoJoinRoles' },
       ))
       .addBooleanOption((o) => o.setName('on').setDescription('On or off').setRequired(true)))
     .addSubcommand((s) => s.setName('applications').setDescription('Open or close one application type.')
@@ -106,6 +107,13 @@ async function view(interaction) {
     .setTitle('⚙️ Bot configuration')
     .addFields(
       { name: 'Whitelist mode', value: `**${db.get('whitelistMode', 'open')}**`, inline: true },
+      {
+        name: 'Join mode',
+        value: db.get('autoJoinRoles', false)
+          ? '**auto** — Citizen + Whitelisted on join'
+          : '**verify** — Unverified until they accept the rules',
+        inline: true,
+      },
       { name: 'Automod', value: db.get('automod', true) ? 'on' : 'off', inline: true },
       { name: 'Leveling', value: db.get('levelingEnabled', true) ? 'on' : 'off', inline: true },
       { name: 'Welcome messages', value: db.get('welcomeEnabled', true) ? 'on' : 'off', inline: true },
@@ -192,7 +200,20 @@ async function toggle(interaction) {
   const feature = interaction.options.getString('feature');
   const on = interaction.options.getBoolean('on');
   db.set(feature, on);
-  return interaction.reply({ embeds: [E.success('Setting updated', `**${feature}** is now **${on ? 'on' : 'off'}**.`)], flags: EPH });
+
+  // Changing the join mode has a follow-up step, so spell it out rather than
+  // leaving them to wonder why existing members still can't see anything.
+  let note = '';
+  if (feature === 'autoJoinRoles') {
+    note = on
+      ? '\n\nNew members now get **Citizen + Whitelisted** the moment they join — no verify step. Run `/cleanup members confirm:CONFIRM` once to bring everyone already here up to the same access.'
+      : '\n\nNew members now land as **Unverified** and must accept the rules to get in. Re-post the gate with `/panel verify replace:true`.';
+  }
+
+  return interaction.reply({
+    embeds: [E.success('Setting updated', `**${feature}** is now **${on ? 'on' : 'off'}**.${note}`)],
+    flags: EPH,
+  });
 }
 
 async function applications(interaction) {

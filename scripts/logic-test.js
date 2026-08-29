@@ -284,6 +284,59 @@ const fivem = load('src/fivem');
   });
 }
 
+// ── Join modes ───────────────────────────────────────────────────────────────
+// autoJoinRoles=true must hand out Citizen + Whitelisted and never Unverified;
+// false must do the opposite. Getting this backwards either locks everyone out
+// or throws the gate open, and neither is obvious until members arrive.
+{
+  const db = load('src/database');
+  const guildMemberAdd = load('src/events/guildMemberAdd');
+
+  db.setId('roles', 'member', 'role-member');
+  db.setId('roles', 'whitelist', 'role-whitelist');
+  db.setId('roles', 'unverified', 'role-unverified');
+
+  const makeMember = (added, removed) => ({
+    id: 'newbie-1',
+    user: { bot: false, tag: 'newbie#0001', createdTimestamp: Date.now() - 400 * 864e5, displayAvatarURL: () => null },
+    joinedTimestamp: Date.now(),
+    roles: {
+      cache: { has: () => false },
+      add: async (r) => { added.push(...[].concat(r)); },
+      remove: async (r) => { removed.push(r); },
+    },
+    guild: {
+      id: 'guild-1',
+      memberCount: 101,
+      channels: { cache: new Map(), fetch: async () => null },
+    },
+  });
+
+  asyncChecks.push(async () => {
+    const wasAuto = db.get('autoJoinRoles', false);
+    const wasWelcome = db.get('welcomeEnabled', true);
+    db.set('welcomeEnabled', false); // no welcome channel in these mocks
+
+    try {
+      db.set('autoJoinRoles', true);
+      const added = [];
+      await guildMemberAdd.execute(makeMember(added, []));
+      assert.ok(added.includes('role-member'), 'auto mode grants Citizen');
+      assert.ok(added.includes('role-whitelist'), 'auto mode grants Whitelisted');
+      assert.ok(!added.includes('role-unverified'), 'auto mode must not add Unverified');
+
+      db.set('autoJoinRoles', false);
+      const added2 = [];
+      await guildMemberAdd.execute(makeMember(added2, []));
+      assert.deepStrictEqual(added2, ['role-unverified'], 'verify mode adds only Unverified');
+    } finally {
+      db.set('autoJoinRoles', wasAuto);
+      db.set('welcomeEnabled', wasWelcome);
+    }
+    pass('join modes: auto grants Citizen + Whitelisted, verify gates on Unverified');
+  });
+}
+
 // ── Transcript ───────────────────────────────────────────────────────────────
 {
   const transcript = load('src/transcript');

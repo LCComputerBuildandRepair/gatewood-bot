@@ -129,18 +129,45 @@ async function cleanRoles(interaction, guild) {
   return interaction.editReply({ embeds: [embed] });
 }
 
+/**
+ * Bring every human up to the access a new member would get right now. In auto
+ * join mode that includes Whitelisted, so flipping the switch doesn't leave the
+ * people who were already here stuck behind a gate that no longer exists.
+ */
 async function cleanMembers(interaction, guild) {
   const memberRole = db.roleId('member');
+  const whitelistRole = db.roleId('whitelist');
   const unverified = db.roleId('unverified');
   if (!memberRole) return interaction.editReply({ embeds: [E.error('No Citizen role', 'Run `/setup` or bind it with `/config role key:member`.')] });
 
+  const alsoWhitelist = db.get('autoJoinRoles', false) || db.get('whitelistMode', 'open') === 'open';
+
   await guild.members.fetch();
   let granted = 0;
+  let whitelisted = 0;
+  let unflagged = 0;
+
   for (const m of guild.members.cache.values()) {
-    if (m.user.bot || m.roles.cache.has(memberRole)) continue;
-    await m.roles.add(memberRole, 'Cleanup: bulk verify').catch(() => {});
-    if (unverified && m.roles.cache.has(unverified)) await m.roles.remove(unverified, 'Cleanup: bulk verify').catch(() => {});
-    granted += 1;
+    if (m.user.bot) continue;
+
+    if (!m.roles.cache.has(memberRole)) {
+      await m.roles.add(memberRole, 'Cleanup: bulk grant').catch(() => {});
+      granted += 1;
+    }
+    if (alsoWhitelist && whitelistRole && !m.roles.cache.has(whitelistRole)) {
+      await m.roles.add(whitelistRole, 'Cleanup: bulk grant').catch(() => {});
+      whitelisted += 1;
+    }
+    if (unverified && m.roles.cache.has(unverified)) {
+      await m.roles.remove(unverified, 'Cleanup: bulk grant').catch(() => {});
+      unflagged += 1;
+    }
   }
-  return interaction.editReply({ embeds: [E.success('Members verified', `Gave the Citizen role to **${granted}** members.`)] });
+
+  return interaction.editReply({
+    embeds: [E.success('Members updated',
+      `Citizen granted to **${granted}**.\n` +
+      (alsoWhitelist ? `Whitelisted granted to **${whitelisted}**.\n` : 'Whitelisted skipped — the whitelist is application-only.\n') +
+      `Unverified removed from **${unflagged}**.`)],
+  });
 }

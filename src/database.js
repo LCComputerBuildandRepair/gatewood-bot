@@ -17,6 +17,9 @@ const DEFAULTS = {
 
   settings: {
     whitelistMode: 'open',       // 'open' | 'application'
+    // true  → new members get Citizen + Whitelisted the moment they join.
+    // false → they land as Unverified and must accept the rules to get in.
+    autoJoinRoles: false,
     applicationsOpen: {},        // appKey → bool (missing = open)
     automod: true,
     levelingEnabled: true,
