@@ -40,15 +40,14 @@ const APPLICATIONS = [
   },
   {
     key: 'police',
-    label: 'Law Enforcement (LSPD / BCSO / SASP)',
+    label: 'San Andreas State Troopers (SAST)',
     emoji: '🚓',
     description: 'Apply to join a law enforcement department.',
     grants: null, // department rank is assigned by command staff after interview
-    reviewKeys: ['owner', 'coowner', 'management', 'headadmin', 'admin', 'dept_lspd', 'dept_bcso', 'dept_sasp'],
+    reviewKeys: ['owner', 'coowner', 'management', 'headadmin', 'admin', 'dept_sast'],
     color: 0x1D4ED8,
     pages: [
       [
-        { id: 'dept', label: 'Which department? (LSPD / BCSO / SASP)', style: 'short', max: 40 },
         { id: 'char_name', label: 'Character full name', style: 'short', max: 100 },
         { id: 'leo_exp', label: 'Prior law enforcement RP experience', style: 'paragraph', max: 1000 },
         { id: 'availability', label: 'Availability (days / hours, timezone)', style: 'short', max: 200 },

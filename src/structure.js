@@ -34,13 +34,10 @@ const ROLES = [
 
   // ── Whitelisted departments (top-level flags; full rank ladders are built
   //    per-department by /build-departments from DEPARTMENTS below) ──
-  { key: 'dept_lspd',     name: '🚓 Los Santos Police',   color: 0x1D4ED8, hoist: true, mentionable: true },
-  { key: 'dept_bcso',     name: '🤠 Blaine County Sheriff', color: 0xCA8A04, hoist: true, mentionable: true },
-  { key: 'dept_sasp',     name: '🛣️ State Police',        color: 0x0F766E, hoist: true, mentionable: true },
+  { key: 'dept_sast',     name: '🚔 State Troopers',      color: 0x2563EB, hoist: true, mentionable: true },
   { key: 'dept_ems',      name: '🚑 EMS / Fire',          color: 0xDC2626, hoist: true, mentionable: true },
   { key: 'dept_doj',      name: '⚖️ Department of Justice', color: 0x7C3AED, hoist: true, mentionable: true },
   { key: 'dept_mechanic', name: '🔧 Mechanic',            color: 0x64748B, hoist: true, mentionable: true },
-  { key: 'dept_news',     name: '📰 Weazel News',         color: 0x0EA5E9, hoist: true, mentionable: true },
 
   // ── Community ──
   { key: 'creator',    name: '🎬 Content Creator', color: 0xEC4899, hoist: true,  mentionable: true },
@@ -234,31 +231,16 @@ const STAT_CATEGORY = { key: 'cat_stats', name: '📈 ┃ SERVER STATS' };
 //   'announce' — everyone views, only command ranks post
 //   'command'  — command ranks only (rank.command === true)
 const DEPARTMENT_RANKS = {
-  lspd: [
-    { key: 'chief',    name: 'Chief of Police',    emoji: '⭐', color: 0x1E3A8A, command: true },
-    { key: 'asst',     name: 'Assistant Chief',    emoji: '🎖️', color: 0x1D4ED8, command: true },
-    { key: 'captain',  name: 'Captain',            emoji: '🏅', color: 0x2563EB, command: true },
-    { key: 'lt',       name: 'Lieutenant',         emoji: '🔸', color: 0x3B82F6, command: true },
-    { key: 'sgt',      name: 'Sergeant',           emoji: '🔹', color: 0x60A5FA },
-    { key: 'corporal', name: 'Corporal',           emoji: '▫️', color: 0x93C5FD },
-    { key: 'officer',  name: 'Officer',            emoji: '👮', color: 0xBFDBFE },
-    { key: 'cadet',    name: 'Cadet',              emoji: '🚸', color: 0xDBEAFE },
-  ],
-  bcso: [
-    { key: 'sheriff',  name: 'Sheriff',            emoji: '⭐', color: 0x854D0E, command: true },
-    { key: 'undersheriff', name: 'Undersheriff',   emoji: '🎖️', color: 0xA16207, command: true },
-    { key: 'captain',  name: 'Captain',            emoji: '🏅', color: 0xCA8A04, command: true },
-    { key: 'lt',       name: 'Lieutenant',         emoji: '🔸', color: 0xEAB308, command: true },
-    { key: 'sgt',      name: 'Sergeant',           emoji: '🔹', color: 0xFACC15 },
-    { key: 'deputy',   name: 'Deputy',             emoji: '🤠', color: 0xFDE047 },
-    { key: 'trainee',  name: 'Trainee Deputy',     emoji: '🚸', color: 0xFEF08A },
-  ],
-  sasp: [
-    { key: 'commander', name: 'Commander',         emoji: '⭐', color: 0x134E4A, command: true },
-    { key: 'captain',   name: 'Captain',           emoji: '🏅', color: 0x0F766E, command: true },
-    { key: 'sgt',       name: 'Sergeant',          emoji: '🔹', color: 0x14B8A6 },
-    { key: 'trooper',   name: 'Trooper',           emoji: '🛣️', color: 0x5EEAD4 },
-    { key: 'cadet',     name: 'Probationary Trooper', emoji: '🚸', color: 0x99F6E4 },
+  sast: [
+    { key: 'colonel',   name: 'Colonel',            emoji: '⭐', color: 0x1E3A8A, command: true },
+    { key: 'major',     name: 'Major',              emoji: '🎖️', color: 0x1D4ED8, command: true },
+    { key: 'captain',   name: 'Captain',            emoji: '🏅', color: 0x2563EB, command: true },
+    { key: 'lt',        name: 'Lieutenant',         emoji: '🔸', color: 0x3B82F6, command: true },
+    { key: 'sgt',       name: 'Sergeant',           emoji: '🔹', color: 0x60A5FA },
+    { key: 'corporal',  name: 'Corporal',           emoji: '▫️', color: 0x93C5FD },
+    { key: 'senior',    name: 'Senior Trooper',     emoji: '🚔', color: 0xBFDBFE },
+    { key: 'trooper',   name: 'Trooper',            emoji: '👮', color: 0xDBEAFE },
+    { key: 'cadet',     name: 'Probationary Trooper', emoji: '🚸', color: 0xEFF6FF },
   ],
   ems: [
     { key: 'chief',     name: 'Chief of Medicine', emoji: '⭐', color: 0x7F1D1D, command: true },
@@ -282,12 +264,6 @@ const DEPARTMENT_RANKS = {
     { key: 'mechanic',  name: 'Mechanic',          emoji: '🔩', color: 0x94A3B8 },
     { key: 'apprentice',name: 'Apprentice',        emoji: '🚸', color: 0xCBD5E1 },
   ],
-  news: [
-    { key: 'director',  name: 'News Director',     emoji: '⭐', color: 0x075985, command: true },
-    { key: 'producer',  name: 'Producer',          emoji: '🎬', color: 0x0284C7, command: true },
-    { key: 'anchor',    name: 'Anchor',            emoji: '🎙️', color: 0x0EA5E9 },
-    { key: 'reporter',  name: 'Reporter',          emoji: '📰', color: 0x38BDF8 },
-  ],
 };
 
 const DEPARTMENT_CHANNELS = [
@@ -308,13 +284,10 @@ const DEPARTMENT_CHANNELS = [
 // `roleKey` links a department to its top-level flag role in ROLES above, so
 // members of any rank also appear under one hoisted department heading.
 const DEPARTMENTS = [
-  { key: 'lspd',     name: 'Los Santos Police Department', short: 'LSPD', slug: 'lspd', emoji: '🚓', roleKey: 'dept_lspd',     color: 0x1D4ED8 },
-  { key: 'bcso',     name: 'Blaine County Sheriff’s Office', short: 'BCSO', slug: 'bcso', emoji: '🤠', roleKey: 'dept_bcso', color: 0xCA8A04 },
-  { key: 'sasp',     name: 'San Andreas State Police',     short: 'SASP', slug: 'sasp', emoji: '🛣️', roleKey: 'dept_sasp',     color: 0x0F766E },
+  { key: 'sast',     name: 'San Andreas State Troopers',   short: 'SAST', slug: 'sast', emoji: '🚔', roleKey: 'dept_sast',     color: 0x2563EB },
   { key: 'ems',      name: 'EMS & Fire Department',        short: 'EMS',  slug: 'ems',  emoji: '🚑', roleKey: 'dept_ems',      color: 0xDC2626 },
   { key: 'doj',      name: 'Department of Justice',        short: 'DOJ',  slug: 'doj',  emoji: '⚖️', roleKey: 'dept_doj',      color: 0x7C3AED },
   { key: 'mechanic', name: 'Gatewood Customs',             short: 'Mechanic', slug: 'mechanic', emoji: '🔧', roleKey: 'dept_mechanic', color: 0x64748B },
-  { key: 'news',     name: 'Weazel News',                  short: 'News', slug: 'news', emoji: '📰', roleKey: 'dept_news',     color: 0x0EA5E9 },
 ];
 
 // Order categories are sorted into by /organize. Anything not listed keeps its
