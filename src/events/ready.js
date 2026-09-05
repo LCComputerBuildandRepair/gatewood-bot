@@ -6,6 +6,7 @@ const fivem = require('../fivem');
 const tasks = require('../tasks');
 const twitch = require('../twitch');
 const bridge = require('../bridge');
+const statusapi = require('../statusapi');
 
 module.exports = {
   name: 'clientReady',
@@ -46,5 +47,6 @@ module.exports = {
     tasks.start(client);   // stat counters, restart countdown, giveaway draws
     twitch.start(client);  // go-live alerts (no-op without credentials)
     bridge.start(client);  // in-game HTTP bridge (no-op unless enabled)
+    statusapi.start(client); // public status API for the website (no-op unless enabled)
   },
 };

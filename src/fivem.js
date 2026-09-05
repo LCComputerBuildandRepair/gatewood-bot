@@ -67,6 +67,7 @@ async function query() {
     max,
     list,
     resources: Array.isArray(info?.resources) ? info.resources.length : null,
+    vars: info?.vars || null,
     banner: info?.vars?.banner_connecting || info?.vars?.banner_detail || null,
     latency,
   };

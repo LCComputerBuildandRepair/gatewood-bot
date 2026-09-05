@@ -177,3 +177,9 @@ For queue priority, open `gatewood_bridge/server.lua`, find the `Config.UsePrior
 3. Restart, then `/streamers add login:<their twitch username>`.
 
 Alerts post to `#live-now` and ping the `🔴 Live Alerts` role.
+
+## Website live player count
+
+The website reads the player count from this bot. See
+[docs-website-status-api.md](docs-website-status-api.md) — it is two lines in
+`.env` plus opening one firewall port.

@@ -41,6 +41,18 @@ module.exports = {
     secret: process.env.BRIDGE_SECRET || '',
   },
 
+  // Public, read-only status API the website reads (src/statusapi.js).
+  // Unlike the bridge above this binds publicly on purpose — everything it
+  // returns is already visible to anyone who joins the server.
+  statusApi: {
+    enabled: bool(process.env.STATUS_API_ENABLED, false),
+    port: parseInt(process.env.STATUS_API_PORT || '30123', 10),
+    host: process.env.STATUS_API_HOST || '0.0.0.0',
+    origin: process.env.STATUS_API_ORIGIN || '*',
+    cacheMs: parseInt(process.env.STATUS_API_CACHE_MS || '15000', 10),
+    showPlayers: bool(process.env.STATUS_API_SHOW_PLAYERS, false),
+  },
+
   twitchClientId: process.env.TWITCH_CLIENT_ID || null,
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || null,
 };

@@ -59,6 +59,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     require('./src/tasks').stop();
     require('./src/twitch').stop();
     require('./src/bridge').stop();
+    require('./src/statusapi').stop();
     client.destroy();
     process.exit(0);
   });
