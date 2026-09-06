@@ -209,7 +209,9 @@ for (let i = 0; i < require(path.join(root, 'src/content')).RULEBOOK.length; i +
 }
 
 // ── Report ───────────────────────────────────────────────────────────────────
-const deptChannels = structure.DEPARTMENTS.length * structure.DEPARTMENT_CHANNELS.length;
+// Per-department, because departments can carry extra channels of their own.
+const deptChannels = structure.DEPARTMENTS.reduce((sum, d) =>
+  sum + structure.DEPARTMENT_CHANNELS.length + (structure.DEPARTMENT_EXTRA_CHANNELS[d.key] || []).length, 0);
 const deptRoles = Object.values(structure.DEPARTMENT_RANKS).reduce((a, r) => a + r.length, 0);
 
 console.log('');

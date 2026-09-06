@@ -16,7 +16,9 @@ const {
 
 const db = require('../database');
 const E = require('../utils/embeds');
-const { DEPARTMENTS, DEPARTMENT_RANKS, DEPARTMENT_CHANNELS, STAFF_KEYS } = require('../structure');
+const {
+  DEPARTMENTS, DEPARTMENT_RANKS, DEPARTMENT_CHANNELS, DEPARTMENT_EXTRA_CHANNELS, STAFF_KEYS,
+} = require('../structure');
 const { dedupeOverwrites } = require('../utils/helpers');
 
 const EPH = MessageFlags.Ephemeral;
@@ -138,7 +140,10 @@ async function buildDepartment(guild, dept, log) {
   db.setId('categories', catKey, category.id);
 
   // ── Channels ──
-  for (const def of DEPARTMENT_CHANNELS) {
+  // Core set plus anything this particular department genuinely needs.
+  const channelSet = [...DEPARTMENT_CHANNELS, ...(DEPARTMENT_EXTRA_CHANNELS[dept.key] || [])];
+
+  for (const def of channelSet) {
     const name = def.name.replace('{slug}', dept.slug);
     const key = `dept_${dept.key}_${def.key}`;
     const isVoice = def.type === 'voice';

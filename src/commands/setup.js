@@ -204,6 +204,7 @@ function overwritesFor(guild, visibility, readonly) {
 
 async function buildChannels(guild, log) {
   await guild.channels.fetch();
+  let retired = 0;
 
   for (const cat of CATEGORIES) {
     let category = guild.channels.cache.find(
@@ -221,6 +222,10 @@ async function buildChannels(guild, log) {
     db.setId('categories', cat.key, category.id);
 
     for (const ch of cat.channels) {
+      // Retired by /slim — the owner removed it on purpose, so /setup must not
+      // quietly put it back every time it runs.
+      if (db.isRetired(ch.key)) { retired += 1; continue; }
+
       const visibility = ch.visibility || cat.visibility;
       let channel = guild.channels.cache.find((c) => c.parentId === category.id && c.name === ch.name);
 
@@ -251,6 +256,8 @@ async function buildChannels(guild, log) {
       db.setId('channels', ch.key, channel.id);
     }
   }
+
+  if (retired) log.push(`⏭️ Skipped **${retired}** channels you retired with /slim`);
 }
 
 const normalize = (name) =>

@@ -21,6 +21,9 @@ const DEFAULTS = {
     // false → they land as Unverified and must accept the rules to get in.
     autoJoinRoles: false,
     applicationsOpen: {},        // appKey → bool (missing = open)
+    // Blueprint channel keys the owner deliberately removed with /slim.
+    // /setup skips these, so a cleanup is not undone by the next repair run.
+    retiredChannels: [],
     automod: true,
     levelingEnabled: true,
     welcomeEnabled: true,
@@ -91,6 +94,20 @@ const db = {
   categoryId(key) { return load().ids.categories[key]; },
   allIds(kind) { return load().ids[kind]; },
   clearId(kind, key) { delete load().ids[kind][key]; save(); },
+
+  // ── retired channels ───────────────────────────────────────────────────────
+  retireChannel(key) {
+    const d = load();
+    if (key && !d.settings.retiredChannels.includes(key)) d.settings.retiredChannels.push(key);
+    save();
+  },
+  restoreChannel(key) {
+    const d = load();
+    d.settings.retiredChannels = d.settings.retiredChannels.filter((k) => k !== key);
+    save();
+  },
+  isRetired(key) { return load().settings.retiredChannels.includes(key); },
+  retiredChannels() { return load().settings.retiredChannels; },
 
   // ── settings ───────────────────────────────────────────────────────────────
   get(key, dflt = null) {

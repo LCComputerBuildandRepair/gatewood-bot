@@ -337,6 +337,44 @@ const fivem = load('src/fivem');
   });
 }
 
+// ── Retired channels ─────────────────────────────────────────────────────────
+// The whole point of /slim is undone if /setup rebuilds what it removed, so
+// the retire list has to survive and be reversible.
+{
+  const db = load('src/database');
+  db.restoreChannel('ic_darkweb');
+
+  assert.strictEqual(db.isRetired('ic_darkweb'), false, 'starts clean');
+  db.retireChannel('ic_darkweb');
+  assert.ok(db.isRetired('ic_darkweb'), 'retiring sticks');
+  db.retireChannel('ic_darkweb');
+  assert.strictEqual(db.retiredChannels().filter((k) => k === 'ic_darkweb').length, 1, 'no duplicates');
+  db.restoreChannel('ic_darkweb');
+  assert.strictEqual(db.isRetired('ic_darkweb'), false, 'restoring works');
+
+  // A retired key must be one /setup actually knows about, or restore is a lie.
+  const structure = load('src/structure');
+  const blueprintKeys = new Set(structure.CATEGORIES.flatMap((c) => c.channels.map((ch) => ch.key)));
+  assert.ok(blueprintKeys.has('ic_darkweb'), 'test key exists in the blueprint');
+  pass('retire/restore is idempotent and reversible');
+}
+
+// ── Department channel budget ────────────────────────────────────────────────
+// "Too many channels" is arithmetic, not taste. Keep it visible in the tests so
+// a future addition has to be a deliberate choice.
+{
+  const s = load('src/structure');
+  const perDept = s.DEPARTMENTS.map((d) =>
+    s.DEPARTMENT_CHANNELS.length + (s.DEPARTMENT_EXTRA_CHANNELS[d.key] || []).length);
+  const deptTotal = perDept.reduce((a, b) => a + b, 0);
+  const mainTotal = s.CATEGORIES.reduce((a, c) => a + c.channels.length, 0);
+  const grand = mainTotal + deptTotal + s.STAT_CHANNELS.length;
+
+  for (const n of perDept) assert.ok(n <= 8, `a department should not need more than 8 channels, got ${n}`);
+  assert.ok(grand <= 100, `blueprint builds ${grand} channels — over the 100 budget`);
+  pass(`blueprint budget: ${mainTotal} main + ${deptTotal} department + ${s.STAT_CHANNELS.length} counters = ${grand}`);
+}
+
 // ── Transcript ───────────────────────────────────────────────────────────────
 {
   const transcript = load('src/transcript');

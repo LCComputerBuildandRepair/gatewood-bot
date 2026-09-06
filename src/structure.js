@@ -266,20 +266,33 @@ const DEPARTMENT_RANKS = {
   ],
 };
 
+// Five channels, not twelve.
+//
+// The original set gave every department its own briefings, roster, requests
+// and promotions channel. In practice a department of a dozen people posts in
+// one chat and ignores the rest, and four departments × twelve channels is
+// where "this server has too many channels" comes from. Roster is a bot-posted
+// embed (`/department roster publish:true`), so it lives in the pinned SOP
+// channel rather than needing its own; promotions land in announcements;
+// requests and briefings are threads in chat.
+//
+// `extra` on a department in DEPARTMENTS below adds channels it genuinely
+// needs — SAST gets its incident log back, because law enforcement actually
+// files reports.
 const DEPARTMENT_CHANNELS = [
   { key: 'announcements', name: '📌・{slug}-announcements', type: 'text',  scope: 'announce' },
-  { key: 'briefing',      name: '📋・briefings',           type: 'text',  scope: 'announce' },
   { key: 'chat',          name: '💬・{slug}-chat',         type: 'text',  scope: 'all' },
-  { key: 'roster',        name: '👥・roster',              type: 'text',  scope: 'announce' },
-  { key: 'sop',           name: '📖・sop-and-training',    type: 'text',  scope: 'announce' },
-  { key: 'reports',       name: '🗒️・reports-and-logs',    type: 'text',  scope: 'all' },
-  { key: 'requests',      name: '📨・requests',            type: 'text',  scope: 'all' },
-  { key: 'command',       name: '🔒・command-staff',       type: 'text',  scope: 'command' },
-  { key: 'promotions',    name: '📈・promotions',          type: 'text',  scope: 'command' },
-  { key: 'vc_briefing',   name: '🎙️ Briefing Room',        type: 'voice', scope: 'all' },
+  { key: 'sop',           name: '📖・sop-and-roster',      type: 'text',  scope: 'announce' },
+  { key: 'command',       name: '🔒・command',             type: 'text',  scope: 'command' },
   { key: 'vc_patrol',     name: '🚨 On Duty',              type: 'voice', scope: 'all' },
-  { key: 'vc_command',    name: '🔒 Command',              type: 'voice', scope: 'command' },
 ];
+
+// Per-department additions, keyed by department key.
+const DEPARTMENT_EXTRA_CHANNELS = {
+  sast: [
+    { key: 'reports', name: '🗒️・incident-reports', type: 'text', scope: 'all' },
+  ],
+};
 
 // `roleKey` links a department to its top-level flag role in ROLES above, so
 // members of any rank also appear under one hoisted department heading.
@@ -314,6 +327,6 @@ const SENIOR_KEYS = ['owner', 'coowner', 'management', 'headadmin'];
 module.exports = {
   ROLES, PING_ROLES, INTEREST_ROLES, LEVEL_ROLES,
   CATEGORIES, STAT_CHANNELS, STAT_CATEGORY,
-  DEPARTMENTS, DEPARTMENT_RANKS, DEPARTMENT_CHANNELS,
+  DEPARTMENTS, DEPARTMENT_RANKS, DEPARTMENT_CHANNELS, DEPARTMENT_EXTRA_CHANNELS,
   CATEGORY_ORDER, STAFF_KEYS, TICKET_STAFF_KEYS, SENIOR_KEYS,
 };

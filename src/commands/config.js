@@ -52,6 +52,9 @@ module.exports = {
         { name: 'auto-grant Citizen + Whitelisted on join (skips verify)', value: 'autoJoinRoles' },
       ))
       .addBooleanOption((o) => o.setName('on').setDescription('On or off').setRequired(true)))
+    .addSubcommand((s) => s.setName('retired').setDescription('Channels /slim removed, which /setup will not rebuild.')
+      .addStringOption((o) => o.setName('restore')
+        .setDescription('Blueprint key to un-retire, or ALL — the next /setup rebuilds it')))
     .addSubcommand((s) => s.setName('applications').setDescription('Open or close one application type.')
       .addStringOption((o) => o.setName('type').setDescription('Application type').setRequired(true).setAutocomplete(true))
       .addBooleanOption((o) => o.setName('open').setDescription('Open or closed').setRequired(true))),
@@ -81,6 +84,7 @@ module.exports = {
     if (sub === 'channel') return bindChannel(interaction);
     if (sub === 'whitelist') return whitelist(interaction);
     if (sub === 'toggle') return toggle(interaction);
+    if (sub === 'retired') return retired(interaction);
     if (sub === 'applications') return applications(interaction);
   },
 };
@@ -212,6 +216,45 @@ async function toggle(interaction) {
 
   return interaction.reply({
     embeds: [E.success('Setting updated', `**${feature}** is now **${on ? 'on' : 'off'}**.${note}`)],
+    flags: EPH,
+  });
+}
+
+/**
+ * Retiring a channel is a decision, not an accident, so it has to be visible
+ * and reversible — otherwise a cleanup turns into a mystery six months later
+ * when someone asks where #classifieds went.
+ */
+async function retired(interaction) {
+  const restore = interaction.options.getString('restore');
+
+  if (restore) {
+    if (restore.toUpperCase() === 'ALL') {
+      const count = db.retiredChannels().length;
+      for (const k of [...db.retiredChannels()]) db.restoreChannel(k);
+      return interaction.reply({
+        embeds: [E.success('All channels un-retired', `**${count}** keys restored. Run \`/setup\` to rebuild them.`)],
+        flags: EPH,
+      });
+    }
+    if (!db.isRetired(restore)) {
+      return interaction.reply({ embeds: [E.error('Not retired', `\`${restore}\` is not on the retired list. Check \`/config retired\`.`)], flags: EPH });
+    }
+    db.restoreChannel(restore);
+    return interaction.reply({
+      embeds: [E.success('Un-retired', `\`${restore}\` will be rebuilt on the next \`/setup\`.`)],
+      flags: EPH,
+    });
+  }
+
+  const list = db.retiredChannels();
+  return interaction.reply({
+    embeds: [E.base(E.COLORS.info)
+      .setTitle('🗄️ Retired channels')
+      .setDescription(list.length
+        ? `\`${list.join('`, `')}\`\n\n**${list.length}** blueprint channels that \`/setup\` will not rebuild.\n` +
+          'Bring one back with `/config retired restore:<key>`, or everything with `restore:ALL`.'
+        : 'None. `/setup` will build the full blueprint.')],
     flags: EPH,
   });
 }
