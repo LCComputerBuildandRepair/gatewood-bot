@@ -51,6 +51,19 @@ module.exports = {
     const guild = interaction.guild;
     await guild.channels.fetch();
 
+    // Channels another bot posts into via webhook. They can look stone dead
+    // while being load-bearing, so they are called out explicitly.
+    const webhookChannels = new Map();
+    let webhooksReadable = true;
+    try {
+      const hooks = await guild.fetchWebhooks();
+      for (const h of hooks.values()) {
+        if (h.channelId && !webhookChannels.has(h.channelId)) {
+          webhookChannels.set(h.channelId, h.owner?.username || h.name || 'unknown');
+        }
+      }
+    } catch { webhooksReadable = false; }
+
     // Reverse the id registry so a channel can name its own blueprint key.
     const keyById = new Map();
     for (const [key, id] of Object.entries(db.allIds('channels'))) keyById.set(id, key);
@@ -68,6 +81,7 @@ module.exports = {
         channel: ch,
         key: keyById.get(ch.id) || null,
         botManaged: BOT_MANAGED.has(keyById.get(ch.id)),
+        webhook: webhookChannels.get(ch.id) || null,
         isTicket: !!db.getTicket(ch.id),
         ...stat,
       });
@@ -87,7 +101,8 @@ module.exports = {
     const active = rows.filter((r) => r.lastAt && now - r.lastAt <= quietDays * DAY);
 
     // Safe to remove = never used AND not something the bot depends on.
-    const removable = dead.filter((r) => !r.botManaged);
+    const removable = dead.filter((r) => !r.botManaged && !r.webhook);
+    const integrationOnly = dead.filter((r) => r.webhook);
     const deadButNeeded = dead.filter((r) => r.botManaged);
 
     const voiceCount = guild.channels.cache.filter((c) => c.type === ChannelType.GuildVoice).size;
@@ -112,6 +127,21 @@ module.exports = {
             : 'None — every empty channel is one the bot writes to.',
         },
       );
+
+    if (integrationOnly.length) {
+      embed.addFields({
+        name: `🔌 Empty but another bot posts here (${integrationOnly.length})`,
+        value: clamp(`${integrationOnly.map((r) => `#${r.channel.name} — *${r.webhook}*`).join('\n')}\n`
+          + '*Webhook targets. Empty means nothing has fired yet, not unused. Do not delete.*', 1000),
+      });
+    }
+
+    if (!webhooksReadable) {
+      embed.addFields({
+        name: '⚠️ Could not check webhooks',
+        value: 'Missing **Manage Webhooks**, so channels belonging to other bots are not flagged below.',
+      });
+    }
 
     if (deadButNeeded.length) {
       embed.addFields({
@@ -220,6 +250,7 @@ function buildReport(rows, { quietDays, deep, guildName }) {
     for (const r of list) {
       const notes = [
         r.botManaged ? 'bot-managed' : null,
+        r.webhook ? `webhook: ${r.webhook}` : null,
         r.isTicket ? 'open ticket' : null,
         r.key ? `key:${r.key}` : 'not in blueprint',
       ].filter(Boolean).join(', ');
@@ -231,7 +262,7 @@ function buildReport(rows, { quietDays, deep, guildName }) {
     out.push('');
   }
 
-  const removable = rows.filter((r) => !r.lastAt && !r.botManaged && !r.isTicket);
+  const removable = rows.filter((r) => !r.lastAt && !r.botManaged && !r.isTicket && !r.webhook);
   out.push('## Never used, nothing depends on them', '');
   out.push(removable.length
     ? removable.map((r) => `- #${r.channel.name}  (${r.channel.parent?.name || 'no category'})`).join('\n')

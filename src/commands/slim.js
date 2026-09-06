@@ -74,6 +74,9 @@ module.exports = {
     const forceKeep = parseChannelList(guild, interaction.options.getString('keep'));
     const orgCategoryIds = new Set(db.listOrgs().map((o) => o.categoryId).filter(Boolean));
 
+    // channelId → webhook owner name. One API call for the whole guild.
+    const webhookChannels = await fetchWebhookChannels(guild);
+
     // ── Work out the plan ──
     const toDelete = [];
     const toArchive = [];
@@ -89,11 +92,19 @@ module.exports = {
       if (db.getTicket(ch.id)) { skipped.push([ch, 'open ticket']); continue; }
       if (orgCategoryIds.has(ch.parentId)) { skipped.push([ch, 'belongs to an organisation']); continue; }
       if (ch.parent?.name === ARCHIVE_CATEGORY) { skipped.push([ch, 'already archived']); continue; }
+      // A webhook means something outside Discord posts here — an anticheat,
+      // a monitoring bot, a growth tool. Those channels sit empty until the
+      // day they fire, so "never used" is exactly the wrong reading of them.
+      if (webhookChannels.has(ch.id)) { skipped.push([ch, `external integration posts here (${webhookChannels.get(ch.id)})`]); continue; }
 
       const last = await lastMessageAt(ch);
 
       // Rule 1: history is never deleted, only ever moved.
       if (last === null) {
+        // Naming a channel in `also:` is an explicit instruction, so it beats
+        // the bot-managed guard. With no messages to preserve, that means
+        // delete rather than archive — an empty archive entry helps nobody.
+        if (forceArchive.has(ch.id)) { toDelete.push(ch); continue; }
         if (BOT_MANAGED.has(key)) { skipped.push([ch, 'empty, but the bot posts here']); continue; }
         toDelete.push(ch);
         continue;
@@ -142,6 +153,13 @@ module.exports = {
         embed.addFields({
           name: `📁 Categories that end up empty (${emptyCategories.length})`,
           value: clamp(emptyCategories.map((c) => c.name).join('\n'), 1000),
+        });
+      }
+      if (webhookChannels.has('__unavailable__')) {
+        embed.addFields({
+          name: '⚠️ Could not check webhooks',
+          value: 'I am missing **Manage Webhooks**, so I cannot tell which channels other bots post into. '
+            + 'Grant it and re-run, or pass those channels in `keep:` — otherwise this plan may delete an anticheat or monitoring channel that is empty only because nothing has fired yet.',
         });
       }
       embed.setFooter({
@@ -203,6 +221,28 @@ module.exports = {
     return interaction.editReply({ embeds: [done] });
   },
 };
+
+/**
+ * Every channel in the guild that has a webhook pointing at it, mapped to who
+ * owns it. Requires Manage Webhooks; if that is missing we return an empty map
+ * and say so rather than pretending the guild has none — silently treating an
+ * anticheat's log channel as unused is how you break another bot.
+ */
+async function fetchWebhookChannels(guild) {
+  const map = new Map();
+  try {
+    const hooks = await guild.fetchWebhooks();
+    for (const hook of hooks.values()) {
+      if (!hook.channelId) continue;
+      const owner = hook.owner?.username || hook.name || 'unknown';
+      if (!map.has(hook.channelId)) map.set(hook.channelId, owner);
+    }
+  } catch (err) {
+    console.warn('[slim] could not list webhooks — integration channels are not protected:', err.message);
+    map.set('__unavailable__', true);
+  }
+  return map;
+}
 
 /** Timestamp of the most recent message, or null if the channel has never been used. */
 async function lastMessageAt(channel) {
